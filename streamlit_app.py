@@ -7,8 +7,14 @@ import matplotlib.pyplot as plt
 # Load Data
 try:
     df = pd.read_csv("data/bls_cleaned_data.csv")
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')  # Ensure date is in datetime format
+    if df['date'].isnull().any():
+        raise ValueError("The 'date' column contains invalid or missing values.")
 except FileNotFoundError:
     st.error("The file 'bls_cleaned_data.csv' was not found. Please ensure you have processed the data.")
+    st.stop()
+except ValueError as e:
+    st.error(str(e))
     st.stop()
 
 # Map series IDs to human-readable names
@@ -26,15 +32,16 @@ selected_series = st.sidebar.multiselect(
     options=df['seriesName'].unique(),
     default=["Total Non-Farm Workers", "Unemployment Rates"]
 )
+default_start_date = df['date'].min() if not df['date'].isnull().all() else pd.Timestamp("2022-01-01")
+default_end_date = df['date'].max() if not df['date'].isnull().all() else pd.Timestamp("2024-12-31")
 date_range = st.sidebar.date_input(
     "Select Date Range",
-    [df['date'].min(), df['date'].max()]
+    [default_start_date, default_end_date]
 )
 
 # Filter Data
 df = df[df['seriesName'].isin(selected_series)]
 if len(date_range) == 2:
-    df['date'] = pd.to_datetime(df['date'])
     df = df[(df['date'] >= pd.Timestamp(date_range[0])) & (df['date'] <= pd.Timestamp(date_range[1]))]
 
 # Tabs for organization
@@ -115,3 +122,4 @@ with tab4:
         st.pyplot(fig)
     else:
         st.info("Select multiple series to view correlation analysis.")
+
