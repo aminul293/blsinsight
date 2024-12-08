@@ -4,7 +4,11 @@ import json
 
 API_KEY = "72bd5ec7070048a99f4892a5b9221399"  # Replace with your actual BLS API key
 BASE_URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
-SERIES_IDS = ["CEU0000000001", "LNS14000000"]  # Add more series if needed
+SERIES_IDS = [
+    "CEU0000000001",  # Total Non-Farm Workers
+    "LNS14000000",    # Unemployment Rates
+    "LNS11300000"     # Labor Force Participation Rate
+]
 
 def fetch_bls_data(series_ids, start_year, end_year):
     headers = {'Content-type': 'application/json'}

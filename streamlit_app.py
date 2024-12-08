@@ -23,7 +23,10 @@ except ValueError as e:
 series_descriptions = {
     "CEU0000000001": "Total Non-Farm Workers",
     "LNS14000000": "Unemployment Rates",
-    "LNS11300000": "Labor Force Participation Rate"
+    "LNS11300000": "Labor Force Participation Rate",
+    "CES0500000003": "Average Hourly Earnings",
+    "LNS12000000": "Employment Population Ratio",
+    "CES3000000001": "Total Manufacturing Employment"
 }
 df['seriesName'] = df['seriesID'].map(series_descriptions)
 
@@ -53,43 +56,26 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["Visualizations", "Raw Data", "Summary I
 with tab1:
     st.title("Labor Statistics Dashboard")
 
-    # Comparison Line Chart
-    st.subheader("Trends Over Time")
-    fig_comparison = px.line(
+    # Enhanced Line Chart
+    st.subheader("Enhanced Trends Over Time")
+    fig_enhanced = px.line(
         df, x="date", y="value", color="seriesName",
-        title="Comparison of Labor Statistics Over Time",
-        labels={"value": "Value", "seriesName": "Series"}
+        title="Enhanced Trends Over Time",
+        labels={"value": "Value", "date": "Date", "seriesName": "Series"},
+        hover_data={"value": ":.2f", "seriesName": True}
     )
-    st.plotly_chart(fig_comparison)
+    fig_enhanced.update_layout(hovermode="x unified")
+    st.plotly_chart(fig_enhanced)
 
-    # Month-over-Month Change Bar Chart
-    st.subheader("Month-over-Month Percentage Change")
-    df['mom_change'] = df.groupby('seriesID')['value'].pct_change() * 100
-    fig_mom = px.bar(
-        df, x="date", y="mom_change", color="seriesName",
-        title="Month-over-Month Change",
-        labels={"mom_change": "MoM Change (%)"}
+    # Histogram for Distribution
+    st.subheader("Value Distribution (Histogram)")
+    fig_histogram = px.histogram(
+        df, x="value", color="seriesName",
+        title="Value Distribution by Series",
+        labels={"value": "Value", "seriesName": "Series"},
+        marginal="box"  # Adds a box plot to the histogram
     )
-    st.plotly_chart(fig_mom)
-
-    # Annual Trends Area Plot
-    st.subheader("Annual Trends")
-    df['year'] = df['date'].dt.year
-    fig_area = px.area(
-        df, x="year", y="value", color="seriesName",
-        title="Annual Data Trends",
-        labels={"value": "Value", "year": "Year"}
-    )
-    st.plotly_chart(fig_area)
-
-    # Distribution Analysis
-    st.subheader("Distribution Analysis (Box Plot)")
-    fig_box = px.box(
-        df, x="seriesName", y="value",
-        title="Box Plot of Series Values",
-        labels={"value": "Value", "seriesName": "Series"}
-    )
-    st.plotly_chart(fig_box)
+    st.plotly_chart(fig_histogram)
 
     # Moving Average
     st.subheader("Time-Weighted Moving Average")
@@ -102,15 +88,14 @@ with tab1:
     )
     st.plotly_chart(fig_ma)
 
-    # Proportions (Pie Chart)
-    st.subheader("Proportions of Latest Data (Pie Chart)")
-    latest_date = df['date'].max()
-    latest_data = df[df['date'] == latest_date]
-    fig_pie = px.pie(
-        latest_data, names="seriesName", values="value",
-        title=f"Proportions of Latest Data (Date: {latest_date.date()})"
+    # Bubble Chart
+    st.subheader("Bubble Chart of Series Over Time")
+    fig_bubble = px.scatter(
+        df, x="date", y="value", size="value", color="seriesName",
+        title="Bubble Chart of Series Over Time",
+        labels={"value": "Value", "date": "Date", "seriesName": "Series"}
     )
-    st.plotly_chart(fig_pie)
+    st.plotly_chart(fig_bubble)
 
 # Tab 2: Raw Data
 with tab2:
@@ -142,37 +127,33 @@ with tab3:
 
 # Tab 4: Correlation Analysis
 with tab4:
-    st.subheader("Correlation Heatmap")
+    st.subheader("Interactive Correlation Heatmap")
     if len(selected_series) > 1:
-        # Pivot the data for correlation
         corr_data = df.pivot(index='date', columns='seriesName', values='value')
         corr_matrix = corr_data.corr()
 
-        # Plot using seaborn
-        fig, ax = plt.subplots(figsize=(10, 8))
-        sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", ax=ax)
-        st.pyplot(fig)
-
-    st.subheader("Scatter Plot with Regression Line")
-    x_series = st.selectbox("Select X-Axis Series", options=df['seriesName'].unique())
-    y_series = st.selectbox("Select Y-Axis Series", options=df['seriesName'].unique(), index=1)
-
-    scatter_data = df[df['seriesName'].isin([x_series, y_series])]
-    scatter_pivot = scatter_data.pivot(index='date', columns='seriesName', values='value')
-
-    if len(scatter_pivot.dropna()) > 1:
-        fig_scatter = px.scatter(
-            scatter_pivot, x=x_series, y=y_series, trendline="ols",
-            title=f"Scatter Plot of {x_series} vs {y_series}"
+        fig_corr = px.imshow(
+            corr_matrix, 
+            text_auto=True, 
+            color_continuous_scale="coolwarm",
+            title="Correlation Matrix of Series"
         )
-        st.plotly_chart(fig_scatter)
+        st.plotly_chart(fig_corr)
+
+    st.subheader("Scatter Plot Matrix")
+    fig_scatter_matrix = px.scatter_matrix(
+        df, dimensions=["value"], color="seriesName",
+        title="Scatter Plot Matrix of Values",
+        labels={"value": "Value"}
+    )
+    st.plotly_chart(fig_scatter_matrix)
 
 # Tab 5: Forecasting
 with tab5:
-    st.subheader("Forecast Future Trends")
+    st.subheader("Customizable Forecasting")
     forecast_series = st.selectbox("Select a Series for Forecasting", options=df['seriesName'].unique())
+    forecast_periods = st.slider("Select Number of Months to Forecast", 1, 36, 12)
 
-    # Filter data for the selected series
     forecast_df = df[df['seriesName'] == forecast_series].copy()
     forecast_df.set_index('date', inplace=True)
 
@@ -181,10 +162,10 @@ with tab5:
             forecast_df['value'], trend="additive", seasonal="additive", seasonal_periods=12
         )
         fitted_model = model.fit()
-        forecast = fitted_model.forecast(12)  # Forecast the next 12 months
+        forecast = fitted_model.forecast(forecast_periods)
 
         # Plot forecast
-        fig_forecast = px.line(forecast_df, y='value', x=forecast_df.index, title="Forecasting Future Trends")
+        fig_forecast = px.line(forecast_df, y='value', x=forecast_df.index, title="Customizable Forecasting")
         fig_forecast.add_scatter(x=forecast.index, y=forecast, mode='lines', name='Forecast')
         st.plotly_chart(fig_forecast)
     else:
