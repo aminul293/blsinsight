@@ -135,7 +135,7 @@ with tab4:
         fig_corr = px.imshow(
             corr_matrix, 
             text_auto=True, 
-            color_continuous_scale="coolwarm",
+            color_continuous_scale="Viridis",  # Fixed the colorscale issue
             title="Correlation Matrix of Series"
         )
         st.plotly_chart(fig_corr)
