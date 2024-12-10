@@ -1,10 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import seaborn as sns
-import matplotlib.pyplot as plt
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
-import io
 
 # Load Data
 try:
@@ -26,7 +23,11 @@ series_descriptions = {
     "LNS11300000": "Labor Force Participation Rate",
     "CES0500000003": "Average Hourly Earnings",
     "LNS12000000": "Employment Population Ratio",
-    "CES3000000001": "Total Manufacturing Employment"
+    "CES3000000001": "Total Manufacturing Employment",
+    "CES9091000001": "Construction Employment",
+    "LNS13000000": "Employment Level",
+    "CES9092000001": "Transportation Employment",
+    "LNS13327709": "Self-Employed Workers"
 }
 df['seriesName'] = df['seriesID'].map(series_descriptions)
 
@@ -67,35 +68,43 @@ with tab1:
     fig_enhanced.update_layout(hovermode="x unified")
     st.plotly_chart(fig_enhanced)
 
-    # Histogram for Distribution
-    st.subheader("Value Distribution (Histogram)")
-    fig_histogram = px.histogram(
-        df, x="value", color="seriesName",
-        title="Value Distribution by Series",
-        labels={"value": "Value", "seriesName": "Series"},
-        marginal="box"  # Adds a box plot to the histogram
+    # Pie Chart for Proportions
+    st.subheader("Proportions of Latest Data")
+    latest_date = df['date'].max()
+    latest_df = df[df['date'] == latest_date]
+    fig_pie = px.pie(
+        latest_df, values="value", names="seriesName",
+        title=f"Proportions of Latest Data (Date: {latest_date.date()})"
     )
-    st.plotly_chart(fig_histogram)
+    st.plotly_chart(fig_pie)
 
-    # Moving Average
-    st.subheader("Time-Weighted Moving Average")
-    window_size = st.slider("Select Moving Average Window (Months)", 1, 12, value=3)
-    df['moving_average'] = df.groupby('seriesID')['value'].transform(lambda x: x.rolling(window=window_size).mean())
-    fig_ma = px.line(
-        df, x="date", y="moving_average", color="seriesName",
-        title=f"Moving Average (Window Size = {window_size})",
-        labels={"moving_average": "Moving Average"}
+    # Box Plot for Distribution
+    st.subheader("Data Distribution Analysis (Box Plot)")
+    fig_box = px.box(
+        df, x="seriesName", y="value", color="seriesName",
+        title="Box Plot of Series Values",
+        labels={"value": "Value", "seriesName": "Series"}
     )
-    st.plotly_chart(fig_ma)
+    st.plotly_chart(fig_box)
 
-    # Bubble Chart
-    st.subheader("Bubble Chart of Series Over Time")
-    fig_bubble = px.scatter(
-        df, x="date", y="value", size="value", color="seriesName",
-        title="Bubble Chart of Series Over Time",
+    # Area Chart for Cumulative Trends
+    st.subheader("Cumulative Trends Over Time")
+    fig_area = px.area(
+        df, x="date", y="value", color="seriesName",
+        title="Cumulative Trends Over Time",
         labels={"value": "Value", "date": "Date", "seriesName": "Series"}
     )
-    st.plotly_chart(fig_bubble)
+    st.plotly_chart(fig_area)
+
+    # Stacked Bar Chart
+    st.subheader("Comparison of Series Over Time (Stacked Bar)")
+    fig_bar = px.bar(
+        df, x="date", y="value", color="seriesName",
+        title="Comparison of Series Over Time",
+        labels={"value": "Value", "date": "Date", "seriesName": "Series"},
+        barmode="stack"
+    )
+    st.plotly_chart(fig_bar)
 
 # Tab 2: Raw Data
 with tab2:
@@ -135,7 +144,7 @@ with tab4:
         fig_corr = px.imshow(
             corr_matrix, 
             text_auto=True, 
-            color_continuous_scale="Viridis",  # Fixed the colorscale issue
+            color_continuous_scale="Viridis",  # Updated to use a valid Plotly colorscale
             title="Correlation Matrix of Series"
         )
         st.plotly_chart(fig_corr)
@@ -156,6 +165,8 @@ with tab5:
 
     forecast_df = df[df['seriesName'] == forecast_series].copy()
     forecast_df.set_index('date', inplace=True)
+    forecast_df = forecast_df.asfreq('MS')  # Set monthly frequency
+    forecast_df = forecast_df.sort_index()  # Ensure the index is sorted
 
     if len(forecast_df) > 12:
         model = ExponentialSmoothing(
@@ -170,3 +181,4 @@ with tab5:
         st.plotly_chart(fig_forecast)
     else:
         st.info("Not enough data points for forecasting (minimum 12 months required).")
+
