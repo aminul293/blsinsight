@@ -155,25 +155,45 @@ with tab4:
 
 
 # Tab 5: Forecasting
+# Tab 5: Forecasting
 with tab5:
-    st.subheader("Forecasting Trends")
+    st.subheader("Customizable Forecasting")
+    
+    # Step 1: Select series for forecasting
     forecast_series = st.selectbox("Select a Series for Forecasting", options=df['seriesName'].unique())
     forecast_periods = st.slider("Select Number of Months to Forecast", 1, 36, 12)
-
+    
+    # Filter data for the selected series
     forecast_df = df[df['seriesName'] == forecast_series].copy()
     forecast_df.set_index('date', inplace=True)
-
-    if len(forecast_df) > 12:
+    
+    # Step 2: Ensure sufficient data
+    if len(forecast_df) >= 12:  # Ensure at least 12 months of data
+        # Adjust seasonal_periods dynamically based on available data
+        seasonal_periods = min(12, len(forecast_df) // 2)
+        
+        # Step 3: Initialize ExponentialSmoothing model
         model = ExponentialSmoothing(
-            forecast_df['value'], trend="additive", seasonal="additive", seasonal_periods=12
+            forecast_df['value'],
+            trend="additive",
+            seasonal="additive" if seasonal_periods >= 12 else None,  # Add seasonality only if sufficient data
+            seasonal_periods=seasonal_periods
         )
+        
+        # Step 4: Fit the model
         fitted_model = model.fit()
         forecast = fitted_model.forecast(forecast_periods)
-
-        # Plot forecast
-        fig_forecast = px.line(forecast_df, y='value', x=forecast_df.index, title="Forecasting")
+        
+        # Step 5: Plot the forecast
+        fig_forecast = px.line(
+            forecast_df, y='value', x=forecast_df.index,
+            title="Customizable Forecasting",
+            labels={"value": "Value", "date": "Date"}
+        )
         fig_forecast.add_scatter(x=forecast.index, y=forecast, mode='lines', name='Forecast')
         st.plotly_chart(fig_forecast)
+    
+    # Step 6: Handle insufficient data
     else:
-        st.info("Not enough data points for forecasting (minimum 12 months required).")
+        st.warning("Not enough data points for forecasting (minimum 12 months required).")
 
