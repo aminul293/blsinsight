@@ -2,33 +2,29 @@ name: Update BLS Data
 
 on:
   schedule:
-    - cron: '0 0 1 * *'  # Run on the 1st of each month
-  workflow_dispatch:
+    - cron: '0 12 1 * *'  # Run on the 1st of each month
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set Up Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.9
+          python-version: '3.9'
 
-      - name: Install Dependencies
-        run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install pandas requests
 
-      - name: Fetch and Process Data
+      - name: Run data update script
+        run: python your_script_name.py
+
+      - name: Commit changes
         run: |
-          python scripts/data_collection.py
-          python scripts/data_processing.py
-
-      - name: Commit and Push Updated Data
-        run: |
-          git config --local user.name "GitHub Actions"
-          git config --local user.email "actions@github.com"
-          git add data/
-          git commit -m "Automated data update"
+          git add data/bls_cleaned_data.csv
+          git commit -m "Update BLS data"
           git push
+
