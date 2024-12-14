@@ -20,7 +20,7 @@ jobs:
         run: pip install pandas requests
 
       - name: Run data update script
-        run: python your_script_name.py
+        run: python fetch_bls_data.py
 
       - name: Commit changes
         run: |
